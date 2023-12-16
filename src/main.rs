@@ -10,6 +10,19 @@ async fn main() -> std::io::Result<()> {
         .await
 }
 
+#[cfg(windows)]
+// #[link(name = "user32")]
+extern "system" {
+    fn SetConsoleOutputCP(code_page: u32) -> bool;
+}
+
+#[cfg(windows)]
+fn set_console_encoding() {
+    unsafe {
+        SetConsoleOutputCP(65001);
+    }
+}
+
 async fn index() -> impl Responder {
     match exec_and_get_result().await {
         Ok(r) => HttpResponse::Ok().body(r),
@@ -34,18 +47,22 @@ fn determine_cmd() -> String {
     }
     .to_string()
     .to_lowercase();
+    #[cfg(windows)]
+    set_console_encoding();
     return cmd;
 }
 
 async fn exec_and_get_result() -> Result<String, std::io::Error> {
     let cmd = determine_cmd();
+    let cmd_slice: &str = cmd.as_str();
     let (cmd, args) = match cmd.split_once(' ') {
         Some((c, a)) => (c, a),
-        None => ("", ""),
+        None => (cmd_slice, ""),
     };
+
     let mut command = Command::new(cmd);
     if "" != args {
-        command.args(args.split_whitespace());    
+        command.args(args.split_whitespace());
     }
     let out: Output = command.output()?;
     let r = String::from_utf8_lossy(&out.stdout).to_string();
