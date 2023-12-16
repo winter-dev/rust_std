@@ -1,49 +1,55 @@
-use std::process::Command;
+use std::process::{Command, Output};
 
-fn main() {
-    // std();
-    let cmd = determine_cmd();
-    exec_and_get_result(cmd);
+use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| App::new().route("/", web::get().to(index)))
+        .bind("0.0.0.0:8080")?
+        .run()
+        .await
 }
 
-#[cfg(windows)]
-fn set_console_encoding(){
-    unsafe {
-        SetConsoleOutputCP(65001);
+async fn index() -> impl Responder {
+    match exec_and_get_result().await {
+        Ok(r) => HttpResponse::Ok().body(r),
+        Err(cause) => {
+            println!("执行失败: {}", cause);
+            HttpResponse::InternalServerError().body("Internal Server Error")
+        }
     }
 }
 
-fn determine_cmd() ->String{
+fn determine_cmd() -> String {
     let cmd = {
         if cfg!(target_os = "windows") {
             "tasklist"
-        } else if cfg!(target_os="linux") {
-            "ps"
-        } else if cfg!(target_os="macos") {
-            "ps"
+        } else if cfg!(target_os = "linux") {
+            "ps -a"
+        } else if cfg!(target_os = "macos") {
+            "ps -a"
         } else {
             panic!("unknow os")
         }
-    }.to_string().to_lowercase();
+    }
+    .to_string()
+    .to_lowercase();
     return cmd;
 }
 
-fn exec_and_get_result(cmd : String) {
-    match Command::new(cmd).output() {
-        Ok(output) => {
-            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-
-            if output.status.success() {
-                println!("Command output:\n{}", stdout);
-            } else {
-                eprintln!("Command failed: {}", stderr);
-            }
-        }
-        Err(error) => {
-            eprintln!("Command execution failed: {}", error);
-        }
+async fn exec_and_get_result() -> Result<String, std::io::Error> {
+    let cmd = determine_cmd();
+    let (cmd, args) = match cmd.split_once(' ') {
+        Some((c, a)) => (c, a),
+        None => ("", ""),
+    };
+    let mut command = Command::new(cmd);
+    if "" != args {
+        command.args(args.split_whitespace());    
     }
+    let out: Output = command.output()?;
+    let r = String::from_utf8_lossy(&out.stdout).to_string();
+    Ok(r)
 }
 
 /*
