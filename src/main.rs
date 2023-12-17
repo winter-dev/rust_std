@@ -1,15 +1,19 @@
 use std::process::{Command, Output};
 
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| App::new().route("/", web::get().to(index)))
+    HttpServer::new(|| App::new().service(echo).route("/", web::get().to(index)))
         .bind("0.0.0.0:8080")?
         .run()
         .await
 }
 
+#[get("/echo/{q}")]
+async fn echo(req: String) -> impl Responder {
+    HttpResponse::Ok().body(req)
+}
 #[cfg(windows)]
 // #[link(name = "user32")]
 extern "system" {
