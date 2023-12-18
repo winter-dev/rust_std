@@ -10,7 +10,7 @@ async fn main() -> std::io::Result<()> {
         .await
 }
 
-#[get("/echo/{q}")]
+#[get("/echo")]
 async fn echo(req: String) -> impl Responder {
     HttpResponse::Ok().body(req)
 }
