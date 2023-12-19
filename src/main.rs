@@ -10,9 +10,9 @@ async fn main() -> std::io::Result<()> {
         .await
 }
 
-#[get("/echo")]
-async fn echo(req: String) -> impl Responder {
-    HttpResponse::Ok().body(req)
+#[get("/echo/{q}")]
+async fn echo(q: web::Path<String>) -> impl Responder {
+    format!("{q}")
 }
 #[cfg(windows)]
 // #[link(name = "user32")]
